@@ -1,10 +1,13 @@
 'use client';
 import { useState } from "react";
-import { addProduct } from "../actions/newProduct";
+import { editProduct } from "../actions/newProduct";
 import NotificationModal from "../notificationModal";
 import { useFormState } from 'react-dom';
 import { useFormStatus } from 'react-dom';
-import { ChevronDown, Trash2 } from 'lucide-react';
+import Image from "next/image";
+import { CircleX } from 'lucide-react';
+import { AddImageForm } from "./addImageForm";
+
 
 const initialState = {
     message: '',
@@ -16,48 +19,31 @@ function SubmitButton() {
     return (
         <button 
             type="submit" 
-            className="bg-[#336CFF] p-2 rounded text-white uppercase">
-            {pending ? 'Додавання...' : 'Додати'}
+            className="bg-[#0047FF] p-2 rounded text-white uppercase">
+            {pending ? 'Редагування...' : 'Редагувати'}
         </button>
     );
 }
 
-export function AddProductForm({ colorsList, tags, models, categories, sizes, collection }) {
-    const [selectedCategories, setSelectedCategories] = useState(categories[0].name);
-    const [selectedTags, setSelectedTags] = useState([]);
-    const [additionalFields, setAdditionalFields] = useState([{ colorName: '', altText: '', images: [], sizes: [{size:'', quantity: ''}] },]);
-    const [additionalSizeFields, setAdditionalSizeFields] = useState([{size:'', quantity: ''}]);
-    const [state, formAction] = useFormState(addProduct, initialState);
-    const [selectedColorButton, setSelectedCalorButton] = useState(null);
-    const [selectedAdditionalColorButton, setSelectedAdditionalCalorButton] = useState(null);
-    const [selectedMainColor, setSelectedMainColor] = useState('');
+export function UpdateProductForm({ data, colorsList, tags, models, categories, sizes, collection }) {
+    console.log('data', data)
+    const [selectedCategories, setSelectedCategories] = useState(data.category.name);
+    const [selectedTags, setSelectedTags] = useState(data.tags.map(tag => tag.id));
+    const [additionalFields, setAdditionalFields] = useState(data.colors.map((color) => ({ 
+        color: color.colorName || '', 
+        colorId: color.id || '',
+        altText: '', 
+        images: color.images || [], 
+        sizes: color.sizes || [{size:'', quantity: ''}] })));
+    const [additionalSizeFields, setAdditionalSizeFields] = useState([]);
+    const [state, formAction] = useFormState(editProduct, initialState);
+    // const [editTags, setTags] = useState(data.tags);
+    console.log('selectedTags',selectedTags);
 
-    const handleSelected = (e) => {   
+
+    const handleSelected = (e) => {
         const selectedCategory = e.target.value;
         setSelectedCategories(selectedCategory);
-    }
-
-    const handleSelectedMainColor = (e) => {
-        const mainColor = e;
-        setSelectedMainColor(mainColor);
-        setSelectedCalorButton(false);
-    }
-
-    const handleSelectedAdditionalColor = (index, colorName) => {
-        setAdditionalFields((prev) => 
-            prev.map((field, i) => 
-                i === index ? {...field, colorName} : field
-            ));
-        setSelectedAdditionalCalorButton(false);
-    }
-
-    const handleRemoveAdditionalColor = (index) => {
-        console.log('index', index);
-        setAdditionalFields((prev) => {
-            const updateFields = [...prev];
-            updateFields.splice(index, 1 );
-            return updateFields;
-        });
     }
 
     const handleTagChange = (tag) => {
@@ -66,6 +52,37 @@ export function AddProductForm({ colorsList, tags, models, categories, sizes, co
         } else {
             setSelectedTags([...selectedTags, tag]); // Добавляем тег
         }
+    };
+
+    const handleImageDelate = (fieldIndex, imageIndex) => {
+        console.log(fieldIndex, imageIndex);
+        setAdditionalFields((prevFields) => 
+        prevFields.map((field, i) => {
+            console.log('field',field, i);
+            if (i === fieldIndex) {
+                console.log(prevFields);
+                return {
+                    ...field,
+                    images: 
+                    field.images.filter((_, idx) => idx !== imageIndex)
+                };
+            }
+            return field;
+        }));
+    };
+
+    const handleImageAdd = (colorId, uploadedImages) => {
+        console.log('handleImageAdd');
+        setAdditionalFields((prev) => 
+        prev.map((field) => 
+            field.colorId === colorId ? {...field, images: [...field.images, ...uploadedImages.map((image) => ({
+                id: image.id,
+                imageUrl: image.imageUrl,
+                alt: `new Image ${image.id}`
+            }))]} : field
+            )
+        );
+        console.log(additionalFields);
     };
 
     const addField = () => {
@@ -82,22 +99,23 @@ export function AddProductForm({ colorsList, tags, models, categories, sizes, co
         ]);
     };
 
+    
 
   return (
-    <div className="w-full flex-col relative">
+    <div className="w-full flex-col relative pt-10">
+        <div className=" relative">
+          <NotificationModal message={state?.message}/>
+        </div>
         <form action={formAction} className="flex w-full flex-col gap-10">
-
-            {/* input for color of Main Image */}
-            <input type="hidden" name="mainColor" value={selectedMainColor || ''} />
-
-            {/* block for name, description and price of the product */}
             <div className="border border-[#0047FF] mob:border-0 rounded p-5 mob:p-0 flex w-full flex-col gap-2">
+                <input type="hidden" name="productId" value={data.id}/>
                 <label htmlFor="title">Назва товару</label>
                 <input
                     type="text"
                     id="title"
                     name="title"
                     required
+                    defaultValue={data.title}
                     className="focus:outline-none bg-white ring-0 ring-offset-0 p-3 rounded w-full border-[#BABABA] border-[1px] hover:ring-[#336CFF] hover:border-[#336CFF] focus:ring-[#336CFF] focus:border-[#336CFF]"
                 />
                 <label htmlFor="description">Опис товару</label>
@@ -106,6 +124,7 @@ export function AddProductForm({ colorsList, tags, models, categories, sizes, co
                     id="description"
                     name="description"
                     required
+                    defaultValue={data.description}
                     className="focus:outline-none bg-white ring-0 ring-offset-0 p-3 rounded w-full border-[#BABABA] border-[1px] hover:ring-[#336CFF] hover:border-[#336CFF] focus:ring-[#336CFF] focus:border-[#336CFF]"
                 />
                 <div className="grid grid-cols-2 mob:grid-cols-1 gap-2">
@@ -116,6 +135,7 @@ export function AddProductForm({ colorsList, tags, models, categories, sizes, co
                             id="price"
                             name="price"
                             required
+                            defaultValue={data.price}
                             className="focus:outline-none bg-white ring-0 ring-offset-0 p-3 rounded w-full border-[#BABABA] border-[1px] hover:ring-[#336CFF] hover:border-[#336CFF] focus:ring-[#336CFF] focus:border-[#336CFF]"
                         />
                     </div>
@@ -125,6 +145,7 @@ export function AddProductForm({ colorsList, tags, models, categories, sizes, co
                             type="number"
                             id="discountPercentage"
                             name="discountPercentage"
+                            defaultValue={data.discountPercentage}
                             className="focus:outline-none bg-white ring-0 ring-offset-0 p-3 rounded w-full border-[#BABABA] border-[1px] hover:ring-[#336CFF] hover:border-[#336CFF] focus:ring-[#336CFF] focus:border-[#336CFF]"
                         />
                     </div>
@@ -137,6 +158,7 @@ export function AddProductForm({ colorsList, tags, models, categories, sizes, co
                             id="article"
                             name="article"
                             required
+                            defaultValue={data.article}
                             className="focus:outline-none bg-white ring-0 ring-offset-0 p-3 rounded w-full border-[#BABABA] border-[1px] hover:ring-[#336CFF] hover:border-[#336CFF] focus:ring-[#336CFF] focus:border-[#336CFF]"
                         />
                     </div>
@@ -144,7 +166,8 @@ export function AddProductForm({ colorsList, tags, models, categories, sizes, co
                         <label htmlFor="isNew">Новинка</label>
                         <select 
                             name="isNew"
-                            id="isNew" 
+                            id="isNew"
+                            defaultValue={data.isNew} 
                             className="focus:outline-none bg-white ring-0 ring-offset-0 p-3 rounded w-full border-[#BABABA] border-[1px] hover:ring-[#336CFF] hover:border-[#336CFF] focus:ring-[#336CFF] focus:border-[#336CFF]"
                         >
                             <option value={true}>Новий</option>
@@ -153,49 +176,52 @@ export function AddProductForm({ colorsList, tags, models, categories, sizes, co
                     </div>
                 </div>
                 <div className="flex gap-2 mob:flex-col">
-                <div>
-                    <label htmlFor="category">Категорія</label>
-                    <select
-                        name="category"
-                        id="category"
-                        className="capitalize focus:outline-none bg-white ring-0 ring-offset-0 p-3 rounded w-full border-[#BABABA] border-[1px] hover:ring-[#336CFF] hover:border-[#336CFF] focus:ring-[#336CFF] focus:border-[#336CFF]"
-                        onChange={(e) => handleSelected(e)}
-                    >
-                        {categories.map((category) => (
-                        <option key={category.id} value={category.name}>
-                            {category.name}
-                        </option>
-                        ))}
-                    </select>
-                </div>
-
-                <div>
-                    <label htmlFor="subCategory">Підкатегорія</label>
-                    <select
-                        name="subCategory"
-                        id="subCategory"
-                        className="capitalize focus:outline-none bg-white ring-0 ring-offset-0 p-3 rounded w-full border-[#BABABA] border-[1px] hover:ring-[#336CFF] hover:border-[#336CFF] focus:ring-[#336CFF] focus:border-[#336CFF]"
-                    >
-                        {categories
-                        .find((category) => category.name === selectedCategories)
-                        ?.subCategories.map((subCategory) => (
-                            <option key={subCategory.id} value={subCategory.name}>
-                                {subCategory.name}
+                    <div>
+                        <label htmlFor="category">Категорія</label>
+                        <select
+                            name="category"
+                            id="category"
+                            defaultValue={data.category.id}
+                            className="capitalize focus:outline-none bg-white ring-0 ring-offset-0 p-3 rounded w-full border-[#BABABA] border-[1px] hover:ring-[#336CFF] hover:border-[#336CFF] focus:ring-[#336CFF] focus:border-[#336CFF]"
+                            onChange={(e) => handleSelected(e)}
+                        >
+                            {categories.map((category) => (
+                            <option key={category.id} value={category.id}>
+                                {category.name}
                             </option>
-                        ))}
-                    </select>
-                </div>
+                            ))}
+                        </select>
+                    </div>
+                    <div>
+                        <label htmlFor="subCategory">Підкатегорія</label>
+                        <select
+                            name="subCategory"
+                            id="subCategory"
+                            defaultValue={data.subCategory?.id || ''}
+                            className="capitalize focus:outline-none bg-white ring-0 ring-offset-0 p-3 rounded w-full border-[#BABABA] border-[1px] hover:ring-[#336CFF] hover:border-[#336CFF] focus:ring-[#336CFF] focus:border-[#336CFF]"
+                        >
+                            {categories
+                            .find((category) => category.name === selectedCategories)
+                            ?.subCategories.map((subCategory) => (
+                                <option key={subCategory.id} value={subCategory.id}>
+                                    {subCategory.name}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
                 <div className="flex flex-col gap-2">
                     <div>
                         <label htmlFor="model">Модель</label>
-                        <select name="model" 
+                        <select 
+                            name="model" 
+                            defaultValue={data.model?.id || ''}
                             className="capitalize focus:outline-none bg-white ring-0 ring-offset-0 p-3 rounded w-full border-[#BABABA] border-[1px] hover:ring-[#336CFF] hover:border-[#336CFF] focus:ring-[#336CFF] focus:border-[#336CFF]"
                             >
                             {models.map((model) => (
                                 <option 
                                     key={model.id} 
-                                    value={model.name}
+                                    value={model.id}
                                     >
                                         {model.name} 
                                 </option>
@@ -205,13 +231,15 @@ export function AddProductForm({ colorsList, tags, models, categories, sizes, co
 
                     <div>
                         <label htmlFor="model">Колекція</label>
-                        <select name="collection" 
+                        <select 
+                            name="collection" 
+                            // defaultValue={data.collection}
                             className="capitalize focus:outline-none bg-white ring-0 ring-offset-0 p-3 rounded w-full border-[#BABABA] border-[1px] hover:ring-[#336CFF] hover:border-[#336CFF] focus:ring-[#336CFF] focus:border-[#336CFF]"
                             >
                             {collection.map((collItem) => (
                                 <option 
                                     key={collItem.id} 
-                                    value={collItem.name}
+                                    value={collItem.id}
                                     >
                                         {collItem.name} 
                                 </option>
@@ -227,9 +255,9 @@ export function AddProductForm({ colorsList, tags, models, categories, sizes, co
                                     <input
                                         name="tags"
                                         type="checkbox"
-                                        value={tag.name}
-                                        checked={selectedTags.includes(tag.name)}
-                                        onChange={() => handleTagChange(tag.name)}
+                                        value={tag.id}
+                                        checked={selectedTags.includes(tag.id)}
+                                        onChange={() => handleTagChange(tag.id)}
                                         className="w-4 h-4 accent-blue-500"
                                     />
                                     <span className="capitalize">{tag.name}</span>
@@ -239,58 +267,69 @@ export function AddProductForm({ colorsList, tags, models, categories, sizes, co
                     </div>
                 </div>
             </div>
-
-            {/* block for all images uplouding  */}
-            <div className="border border-[#0047FF] mob:border-0 rounded p-5 mob:p-0 flex flex-col gap-2">
+            <div className="border border-[#0047FF] mob:border-0 rounded p-5 mob:p-0 flex flex-col gap-5">
+                <h3 className="w-full text-center uppercase">Фото товару</h3>
                 {additionalFields.map((field, index) => (
-                    <div key={index} className="flex flex-col gap-5 py-5 border-t">
-                        <div className="flex justify-between">
-                            <h3>Фото товару {additionalFields[index].colorName}</h3>
-                            <button type="button" onClick={() => handleRemoveAdditionalColor(index)}> <Trash2 color="red"/> </button>
-                        </div>
-                        
-                        <input type="hidden" name={`colorName_${index}`} value={additionalFields[index].colorName}/>
-                        <div className="flex  relative">
-                            <button 
-                                onClick={() => setSelectedAdditionalCalorButton(index)} 
-                                type="button"
-                                className="capitalize flex justify-between focus:outline-none bg-white ring-0 ring-offset-0 p-3 rounded w-full border-[#BABABA] border-[1px] hover:ring-[#336CFF] hover:border-[#336CFF] focus:ring-[#336CFF] focus:border-[#336CFF]"
+                    <div key={index} className="flex flex-col gap-5">
+                        <div className="flex gap-2 justify-center items-center">
+                        <label htmlFor={`colorName_${index}`}>Колір</label>
+                        <select
+                            id={`colorName_${index}`}
+                            name={`colorName_${index}`}
+                            defaultValue={field.color}
+                            className="capitalize focus:outline-none bg-white ring-0 ring-offset-0 p-3 rounded w-full border-[#BABABA] border-[1px] hover:ring-[#336CFF] hover:border-[#336CFF] focus:ring-[#336CFF] focus:border-[#336CFF]"
+                        >
+                            
+                            {colorsList.map((color) => (
+                                <option 
+                                    key={color.id} 
+                                    value={field.colorName}
+                                    defaultValue={data.colors[0].colorName}
                                 >
-                                    { field.colorName ? field.colorName : 'Оберіть колір' }
-                                    <ChevronDown/>
-                            </button>
-                            {selectedAdditionalColorButton === index && 
-                                <div className="w-full absolute right-0 z-10 h-96 overflow-scroll bg-white origin-top-right p-5 flex flex-col gap-2" aria-orientation="vertical" role="menu" aria-labelledby="menu-button" tabIndex="-1">
-                                    {colorsList.map((color) => (
-                                        <div 
-                                            key={color.id} 
-                                            className="p-1 uppercase flex gap-5 items-center"
-                                            role="menuitem"
-                                            onClick={() => handleSelectedAdditionalColor(index, color.colorName)}
-                                            >
-                                                <div style={{backgroundColor: color.hex}}
-                                                    className="w-6 h-6"
-                                                ></div>
-                                                {color.colorName} 
-                                        </div>
-                                    ))}
-                                </div>
-                            }
+                                    {color.colorName}
+                                </option>
+                            ))}
+                        </select>
                         </div>
-
-                        <input
-                            type="file"
-                            name={`images_${index}`}
-                            multiple
-                        />
-                    
+                        <div className="grid grid-cols-2 gap-2">
+                            {field.images.map((image, imageIdx) => (
+                                <div key={imageIdx} className="relative">
+                                    <Image src={image.imageUrl} alt={image.alt} width={500} height={500}/>
+                                    <button 
+                                        type="button"
+                                        className="absolute top-3 right-3"
+                                        onClick={() => handleImageDelate(index, imageIdx)}
+                                        > 
+                                        <CircleX/>
+                                    </button>
+                                    <input type="hidden" name={`image`} value={image.id} />
+                                </div>
+                            ))}
+                        </div>
+                        <div>
+                            <AddImageForm 
+                                color={field} 
+                                name={data.title} 
+                                index={index}
+                                handleImageAdd={handleImageAdd}
+                            />
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            <p>Наявність:</p>
+                            {field.sizes.map((size, index) => (
+                                <div key={index} className="flex gap-2">
+                                    <div className="p-2 border-[1px] w-10 flex justify-center rounded uppercase bg-slate-100">{size.size.name}</div>
+                                    <div className="flex items-center">{size.available} шт</div>
+                                </div>
+                            ))}
+                        </div>
                         <div className="flex flex-col gap-2">
                             {additionalSizeFields.map((field, subindex) => (
                                 <div key={subindex} className="flex mob:flex-col gap-2">
                                     <select
+                                        defaultValue={field.size}
                                         name={`sizes_${index}_${subindex}`}
                                         className="capitalize focus:outline-none bg-white ring-0 ring-offset-0 p-3 rounded w-full border-[#BABABA] border-[1px] hover:ring-[#336CFF] hover:border-[#336CFF] focus:ring-[#336CFF] focus:border-[#336CFF]"
-                                        
                                     >
                                         <option value="">Оберіть розмір</option>
                                         {sizes.map((size) => (
@@ -316,56 +355,18 @@ export function AddProductForm({ colorsList, tags, models, categories, sizes, co
                                 Додати поле з розміром
                             </button>
                         </div>
-                        
                     </div>
                 ))}
-                <button
+                {/* <button
                     type="button"
                     onClick={addField}
-                    className="bg-[#0047FF] mt-5 text-white p-2 rounded uppercase"
+                    className="bg-[#0047FF] mt-2 text-white p-2 rounded uppercase"
                 >
-                    Додати поле з іншим кольором
-                </button>
+                    Додати колір
+                </button> */}
             </div>
-
-            {/* block for main image uploading */}
-            <div className="border border-[#0047FF] rounded p-5 flex flex-col gap-2">
-                <h3>Головна картинка</h3>
-                <div className="flex  relative">
-                    <button 
-                        onClick={() => setSelectedCalorButton(true)} 
-                        type="button"
-                        className="capitalize flex justify-between focus:outline-none bg-white ring-0 ring-offset-0 p-3 rounded w-full border-[#BABABA] border-[1px] hover:ring-[#336CFF] hover:border-[#336CFF] focus:ring-[#336CFF] focus:border-[#336CFF]"
-                        >
-                            { selectedMainColor ? selectedMainColor : 'Оберіть колір' }
-                            <ChevronDown/>
-                    </button>
-                    {selectedColorButton && 
-                        <div className="w-full absolute right-0 z-10 h-96 overflow-scroll bg-white origin-top-right p-5 flex flex-col gap-2" aria-orientation="vertical" role="menu" aria-labelledby="menu-button" tabIndex="-1">
-                            {colorsList.map((color) => (
-                                <div 
-                                    key={color.id} 
-                                    className="p-1 uppercase flex gap-5 items-center"
-                                    role="menuitem"
-                                    onClick={() => handleSelectedMainColor(color.colorName)}
-                                    >
-                                        <div style={{backgroundColor: color.hex}}
-                                            className="w-6 h-6"
-                                        ></div>
-                                        {color.colorName} 
-                                </div>
-                            ))}
-                        </div>
-                    }
-                </div>
-                <input type="file" name="image" required />
-            </div>       
         <SubmitButton />
         </form>
-
-        <div className="w-full h-auto relative">
-          <NotificationModal message={state?.message}/>
-        </div>
     </div>
   );
 }
